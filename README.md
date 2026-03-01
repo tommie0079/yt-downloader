@@ -14,6 +14,59 @@ Automatically download all videos from YouTube channels — with a clean web UI 
 - **Plex-ready** — embeds upload date metadata and date-prefixed filenames for proper sorting
 - Dark-themed responsive web UI
 
+## Prerequisites — Installing Docker
+
+### Windows
+
+1. Download [Docker Desktop](https://www.docker.com/products/docker-desktop/) and run the installer.
+2. During setup, enable **WSL 2** when prompted.
+3. Restart your computer.
+4. Open Docker Desktop and wait for it to finish starting.
+5. Verify in a terminal:
+   ```bash
+   docker --version
+   docker-compose --version
+   ```
+
+### Synology NAS (DSM 7)
+
+1. Open **Package Center** in DSM.
+2. Search for **Container Manager** (or **Docker** on older DSM versions) and install it.
+3. SSH into the NAS:
+   ```bash
+   ssh your-user@your-nas-ip
+   ```
+4. Verify Docker is available:
+   ```bash
+   sudo docker --version
+   sudo docker-compose --version
+   ```
+   If `docker-compose` is not found, install it:
+   ```bash
+   sudo curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+     -o /usr/local/bin/docker-compose
+   sudo chmod +x /usr/local/bin/docker-compose
+   ```
+
+### Linux (Debian / Ubuntu)
+
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com | sudo sh
+
+# Add your user to the docker group (no sudo needed for docker commands)
+sudo usermod -aG docker $USER
+
+# Install Docker Compose
+sudo apt install -y docker-compose-plugin
+
+# Verify
+docker --version
+docker compose version
+```
+
+Log out and back in for the group change to take effect.
+
 ## Quick Start
 
 ```bash
