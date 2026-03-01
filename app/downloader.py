@@ -18,11 +18,16 @@ def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
     return {
         "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
         "merge_output_format": "mp4",
-        "postprocessors": [{
-            "key": "FFmpegVideoConvertor",
-            "preferedformat": "mp4",
-        }],
-        "outtmpl": os.path.join(download_path, "%(title)s [%(id)s].%(ext)s"),
+        "postprocessors": [
+            {
+                "key": "FFmpegVideoConvertor",
+                "preferedformat": "mp4",
+            },
+            {
+                "key": "FFmpegMetadata",      # Embeds upload_date → Plex "Originally Available"
+            },
+        ],
+        "outtmpl": os.path.join(download_path, "%(upload_date>%Y-%m-%d)s - %(title)s [%(id)s].%(ext)s"),
         "download_archive": archive_file,
         "ignoreerrors": True,
         "no_overwrites": True,
