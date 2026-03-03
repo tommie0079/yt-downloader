@@ -2,8 +2,8 @@
 
 Automatically download all videos from YouTube channels — with a clean web UI and Docker support.
 
-![Uploading yt.png…]()
 
+<img width="861" height="868" alt="yt" src="https://github.com/user-attachments/assets/d7ab72be-b726-4ec1-a35a-5339f57a72de" />
 
 
 ## Features
