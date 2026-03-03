@@ -1,6 +1,8 @@
 # YT Channel Downloader
 
-Automatically download all videos from YouTube channels — with a clean web UI and Docker 
+Automatically download all videos from YouTube channels — with a clean web UI and Docker support.
+
+<img width="1088" height="1172" alt="image" src="https://github.com/user-attachments/assets/4d494b65-36b1-4442-b0df-8da58a484c1b" />
 
 
 ## Features
