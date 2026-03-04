@@ -13,6 +13,8 @@ services:
       # === Windows (comment out above, uncomment below) ===
       #- C:/Users/Tommie/Downloads/downloads:/downloads
       #- ./data:/app/data
+      # YouTube cookies file (place cookies.txt in the data dir)
+      # Export from browser using: https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
     environment:
       - DOWNLOAD_DIR=/downloads
       - CHECK_INTERVAL_MINUTES=30      # How often to check for new videos

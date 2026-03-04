@@ -11,6 +11,7 @@ from app.database import get_db
 logger = logging.getLogger(__name__)
 
 DEFAULT_DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", "/downloads")
+COOKIES_FILE = os.environ.get("COOKIES_FILE", "/app/data/cookies.txt")
 
 
 def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
@@ -39,6 +40,7 @@ def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
         "fragment_retries": 5,
         "concurrent_fragment_downloads": 4,
         "extractor_args": {"youtube": {"js_runtimes": ["node"]}},
+        **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
 
@@ -49,6 +51,7 @@ async def fetch_channel_info(url: str) -> dict | None:
         "no_warnings": True,
         "extract_flat": True,
         "playlist_items": "0",
+        **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
     def _extract():
@@ -76,6 +79,7 @@ async def fetch_channel_videos(url: str) -> list[dict]:
         "no_warnings": True,
         "extract_flat": "in_playlist",
         "ignoreerrors": True,
+        **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
     def _extract():

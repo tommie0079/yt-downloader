@@ -99,6 +99,28 @@ Environment variables (set in `docker-compose.yml`):
 |---|---|---|
 | `DOWNLOAD_DIR` | `/downloads` | Default base directory for downloads |
 | `CHECK_INTERVAL_MINUTES` | `30` | How often to check channels for new videos |
+| `COOKIES_FILE` | `/app/data/cookies.txt` | Path to Netscape-format cookies file for YouTube authentication |
+
+## YouTube Cookies (Bot Detection Fix)
+
+If you see the error **"Sign in to confirm you're not a bot"**, you need to provide YouTube cookies:
+
+1. Install a browser extension to export cookies in **Netscape format**:
+   - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+   - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+2. Log in to YouTube in your browser.
+3. Use the extension to export cookies for `youtube.com` — save the file as `cookies.txt`.
+4. Place `cookies.txt` in your **data directory**:
+   - **Synology:** `/volume1/docker/yt-downloader/data/cookies.txt`
+   - **Windows:** `./data/cookies.txt`
+5. Restart the container:
+   ```bash
+   docker-compose restart
+   ```
+
+The app will automatically detect and use the cookies file. If the file is missing, it runs without cookies.
+
+> **Note:** YouTube cookies expire periodically. If downloads start failing again, re-export fresh cookies.
 
 ## Volumes
 
