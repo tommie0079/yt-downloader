@@ -11,6 +11,7 @@ Automatically download all videos from YouTube channels — with a clean web UI 
 
 - **Add YouTube channels** by URL or handle (e.g. `@ChannelName`)
 - **Auto-downloads all existing videos** when a channel is added
+- **Date range filter** — download only videos from the last 1, 2, 3, or 5 years, or set a custom cutoff date
 - **Checks for new videos** on a configurable schedule (default: every 30 min)
 - **Custom download paths** per channel
 - **Pause/resume** channels
@@ -122,6 +123,23 @@ The app will automatically detect and use the cookies file. If the file is missi
 
 > **Note:** YouTube cookies expire periodically. If downloads start failing again, re-export fresh cookies.
 
+## Date Range Filter
+
+By default, all videos from a channel are downloaded. You can limit this per channel:
+
+| Filter | Effect |
+|---|---|
+| **All time** | Download every video (default) |
+| **Last 1 year** | Videos uploaded in the past 12 months |
+| **Last 2 years** | Videos uploaded in the past 2 years |
+| **Last 3 years** | Videos uploaded in the past 3 years |
+| **Last 5 years** | Videos uploaded in the past 5 years |
+| **Custom** | Enter a specific `YYYY-MM-DD` cutoff date |
+
+- Set the filter when adding a channel, or change it anytime from the channel card dropdown.
+- The filter applies during scanning — videos older than the cutoff are skipped entirely.
+- Changing the filter does **not** remove already-downloaded videos.
+
 ## Volumes
 
 | Host Path | Container Path | Purpose |
@@ -136,8 +154,8 @@ You can change the host-side paths in `docker-compose.yml` to save videos wherev
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/channels` | List all channels with stats |
-| `POST` | `/api/channels` | Add a channel (`{url, download_path?}`) |
-| `PATCH` | `/api/channels/:id` | Update channel (`{download_path?, enabled?}`) |
+| `POST` | `/api/channels` | Add a channel (`{url, download_path?, date_filter?}`) |
+| `PATCH` | `/api/channels/:id` | Update channel (`{download_path?, enabled?, date_filter?}`) |
 | `DELETE` | `/api/channels/:id` | Remove a channel |
 | `GET` | `/api/channels/:id/videos` | List videos (`?status=` filter) |
 | `POST` | `/api/channels/:id/scan` | Manually scan a channel |
