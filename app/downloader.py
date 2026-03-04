@@ -295,25 +295,45 @@ async def process_channel(channel_id: int):
                 except Exception:
                     pass
             else:
-                await db.execute(
-                    "UPDATE videos SET status = 'failed', error_message = ? WHERE id = ?",
-                    (error, video_db_id),
-                )
-                await _broadcast_progress({
-                    "type": "download_failed",
-                    "channel_id": channel_id,
-                    "channel_name": channel_name,
-                    "video_id": video["video_id"],
-                    "video_title": video["title"],
-                    "error": error,
-                    "progress": completed,
-                    "total": total,
-                })
-                # Send error notification
-                try:
-                    await notify_error(channel_name, video["title"], error)
-                except Exception:
-                    pass
+                # Check if rate-limited — stop processing this channel
+                is_rate_limited = error and ("rate-limited" in error.lower() or "try again later" in error.lower())
+
+                if is_rate_limited:
+                    # Don't mark as failed — leave as pending for next scan
+                    await db.execute("UPDATE videos SET status = 'pending' WHERE id = ?", (video_db_id,))
+                    await db.commit()
+                    logger.warning(f"Rate-limited by YouTube — pausing channel {channel_name} for this cycle")
+                    await _broadcast_progress({
+                        "type": "download_failed",
+                        "channel_id": channel_id,
+                        "channel_name": channel_name,
+                        "video_id": video["video_id"],
+                        "video_title": video["title"],
+                        "error": "Rate-limited by YouTube — will retry next scan",
+                        "progress": completed,
+                        "total": total,
+                    })
+                    break  # Stop trying more videos — wait for next scan cycle
+                else:
+                    await db.execute(
+                        "UPDATE videos SET status = 'failed', error_message = ? WHERE id = ?",
+                        (error, video_db_id),
+                    )
+                    await _broadcast_progress({
+                        "type": "download_failed",
+                        "channel_id": channel_id,
+                        "channel_name": channel_name,
+                        "video_id": video["video_id"],
+                        "video_title": video["title"],
+                        "error": error,
+                        "progress": completed,
+                        "total": total,
+                    })
+                    # Send error notification
+                    try:
+                        await notify_error(channel_name, video["title"], error)
+                    except Exception:
+                        pass
             await db.commit()
 
             # Sleep between downloads to avoid YouTube rate limiting
