@@ -49,5 +49,9 @@ async def init_db():
         if "date_filter" not in columns:
             await db.execute("ALTER TABLE channels ADD COLUMN date_filter TEXT NOT NULL DEFAULT ''")
             await db.commit()
+
+        # Reset any stuck 'downloading' videos from a previous crash/restart
+        await db.execute("UPDATE videos SET status = 'pending' WHERE status = 'downloading'")
+        await db.commit()
     finally:
         await db.close()
