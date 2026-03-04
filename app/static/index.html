@@ -133,7 +133,7 @@
     letter-spacing: 0.5px;
   }
 
-  .form-group input {
+  .form-group input, .form-group select {
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -143,7 +143,7 @@
     outline: none;
     transition: border-color 0.15s;
   }
-  .form-group input:focus { border-color: var(--accent); }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
   .form-group input::placeholder { color: #555; }
 
   .form-actions {
@@ -230,6 +230,52 @@
   }
 
   .channel-path .label { color: #666; }
+
+  .channel-meta-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .channel-meta-item {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: var(--bg);
+    padding: 6px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .channel-meta-item .label { color: #666; }
+
+  .channel-meta-item select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .channel-meta-item input[type="date"] {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    color-scheme: dark;
+  }
 
   .badge {
     display: inline-block;
@@ -385,6 +431,23 @@
         <input type="text" id="downloadPath" placeholder="/downloads/ChannelName">
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Download videos from</label>
+        <select id="dateFilter" onchange="toggleCustomDate()">
+          <option value="">All time</option>
+          <option value="1y">Last 1 year</option>
+          <option value="2y">Last 2 years</option>
+          <option value="3y">Last 3 years</option>
+          <option value="5y">Last 5 years</option>
+          <option value="custom">Custom date...</option>
+        </select>
+      </div>
+      <div class="form-group" id="customDateGroup" style="display:none">
+        <label>Videos uploaded after</label>
+        <input type="date" id="customDate">
+      </div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="toggleForm()">Cancel</button>
       <button class="btn btn-primary" id="addBtn" onclick="addChannel()">
@@ -419,6 +482,19 @@ function toggleForm() {
   document.getElementById('addForm').classList.toggle('open');
 }
 
+function toggleCustomDate() {
+  const sel = document.getElementById('dateFilter');
+  document.getElementById('customDateGroup').style.display = sel.value === 'custom' ? '' : 'none';
+}
+
+function getDateFilterValue() {
+  const sel = document.getElementById('dateFilter').value;
+  if (sel === 'custom') {
+    return document.getElementById('customDate').value || '';
+  }
+  return sel;
+}
+
 // ── API Calls ──
 async function fetchChannels() {
   try {
@@ -435,6 +511,7 @@ async function addChannel() {
   if (!url) return toast('Please enter a channel URL', true);
 
   const downloadPath = document.getElementById('downloadPath').value.trim();
+  const dateFilter = getDateFilterValue();
   const btn = document.getElementById('addBtn');
   btn.innerHTML = '<span class="spinner"></span> Adding...';
   btn.disabled = true;
@@ -443,7 +520,7 @@ async function addChannel() {
     const res = await fetch(`${API}/api/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, download_path: downloadPath || null }),
+      body: JSON.stringify({ url, download_path: downloadPath || null, date_filter: dateFilter || null }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -453,6 +530,8 @@ async function addChannel() {
     toast(`Added "${data.name}" — downloading videos...`);
     document.getElementById('channelUrl').value = '';
     document.getElementById('downloadPath').value = '';
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('customDateGroup').style.display = 'none';
     toggleForm();
     fetchChannels();
   } catch (e) {
@@ -484,6 +563,26 @@ async function toggleChannel(id, currentlyEnabled) {
     fetchChannels();
   } catch (e) {
     toast('Failed to update channel', true);
+  }
+}
+
+async function updateDateFilter(id, value) {
+  if (value === 'custom') {
+    // Show a prompt for custom date
+    const date = prompt('Enter cutoff date (YYYY-MM-DD).\nOnly videos uploaded after this date will be downloaded:');
+    if (!date) { fetchChannels(); return; }
+    value = date;
+  }
+  try {
+    await fetch(`${API}/api/channels/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date_filter: value }),
+    });
+    toast('Date filter updated');
+    fetchChannels();
+  } catch (e) {
+    toast('Failed to update date filter', true);
   }
 }
 
@@ -575,6 +674,19 @@ function render() {
         </div>
         <div class="channel-path">
           <span class="label">Save to:</span> ${esc(ch.download_path)}
+        </div>
+        <div class="channel-meta-row">
+          <div class="channel-meta-item">
+            <span class="label">&#128197; Download from:</span>
+            <select onchange="updateDateFilter(${ch.id}, this.value)">
+              <option value=""${!ch.date_filter ? ' selected' : ''}>All time</option>
+              <option value="1y"${ch.date_filter === '1y' ? ' selected' : ''}>Last 1 year</option>
+              <option value="2y"${ch.date_filter === '2y' ? ' selected' : ''}>Last 2 years</option>
+              <option value="3y"${ch.date_filter === '3y' ? ' selected' : ''}>Last 3 years</option>
+              <option value="5y"${ch.date_filter === '5y' ? ' selected' : ''}>Last 5 years</option>
+              <option value="custom"${ch.date_filter && !['1y','2y','3y','5y',''].includes(ch.date_filter) ? ' selected' : ''}>Custom${ch.date_filter && !['1y','2y','3y','5y',''].includes(ch.date_filter) ? ': ' + ch.date_filter : ''}</option>
+            </select>
+          </div>
         </div>
         <div class="videos-panel ${isOpen ? 'open' : ''}" id="videos-${ch.id}">
           <div class="videos-header">

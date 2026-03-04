@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import yt_dlp
@@ -70,8 +70,37 @@ async def fetch_channel_info(url: str) -> dict | None:
     return await asyncio.to_thread(_extract)
 
 
-async def fetch_channel_videos(url: str) -> list[dict]:
-    """Fetch all video IDs from a channel."""
+def _parse_date_filter(date_filter: str) -> str | None:
+    """Convert a date_filter value to a YYYYMMDD cutoff date string.
+
+    Supported formats:
+      ''          -> None  (all videos)
+      '1y'        -> 1 year ago
+      '2y'        -> 2 years ago
+      '3y'        -> 3 years ago
+      '5y'        -> 5 years ago
+      'YYYY-MM-DD' -> exact date
+    """
+    if not date_filter:
+        return None
+    date_filter = date_filter.strip()
+    if date_filter.endswith("y"):
+        try:
+            years = int(date_filter[:-1])
+            cutoff = datetime.utcnow() - timedelta(days=years * 365)
+            return cutoff.strftime("%Y%m%d")
+        except ValueError:
+            return None
+    # Try parsing as YYYY-MM-DD
+    try:
+        cutoff = datetime.strptime(date_filter, "%Y-%m-%d")
+        return cutoff.strftime("%Y%m%d")
+    except ValueError:
+        return None
+
+
+async def fetch_channel_videos(url: str, date_filter: str = "") -> list[dict]:
+    """Fetch all video IDs from a channel, optionally filtered by date."""
     # Use /videos tab to get only actual uploads
     channel_videos_url = url.rstrip("/") + "/videos"
     opts = {
@@ -81,6 +110,8 @@ async def fetch_channel_videos(url: str) -> list[dict]:
         "ignoreerrors": True,
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
+
+    cutoff = _parse_date_filter(date_filter)
 
     def _extract():
         videos = []
@@ -95,6 +126,11 @@ async def fetch_channel_videos(url: str) -> list[dict]:
                         # Filter out non-video entries (channel IDs, playlist IDs, etc.)
                         if not vid_id or len(vid_id) != 11:
                             continue
+                        # Apply date filter if set
+                        if cutoff:
+                            upload_date = entry.get("upload_date") or ""
+                            if upload_date and upload_date < cutoff:
+                                continue
                         videos.append({
                             "video_id": vid_id,
                             "title": entry.get("title", "Unknown"),
@@ -143,9 +179,10 @@ async def process_channel(channel_id: int):
 
         logger.info(f"Scanning channel: {channel['name']} ({channel_url})")
 
-        # Fetch all videos from the channel
-        videos = await fetch_channel_videos(channel_url)
-        logger.info(f"Found {len(videos)} videos for {channel['name']}")
+        # Fetch all videos from the channel (applying date filter)
+        date_filter = channel["date_filter"] if "date_filter" in channel.keys() else ""
+        videos = await fetch_channel_videos(channel_url, date_filter)
+        logger.info(f"Found {len(videos)} videos for {channel['name']}" + (f" (filter: {date_filter})" if date_filter else ""))
 
         for video in videos:
             # Check if we already know about this video

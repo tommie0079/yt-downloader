@@ -24,6 +24,7 @@ async def init_db():
                 url TEXT NOT NULL UNIQUE,
                 download_path TEXT NOT NULL,
                 enabled INTEGER NOT NULL DEFAULT 1,
+                date_filter TEXT NOT NULL DEFAULT '',
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -40,5 +41,13 @@ async def init_db():
             );
         """)
         await db.commit()
+
+        # ── Migrations ──────────────────────────────────────────
+        # Add date_filter column if missing (existing databases)
+        cursor = await db.execute("PRAGMA table_info(channels)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        if "date_filter" not in columns:
+            await db.execute("ALTER TABLE channels ADD COLUMN date_filter TEXT NOT NULL DEFAULT ''")
+            await db.commit()
     finally:
         await db.close()

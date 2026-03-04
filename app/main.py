@@ -37,11 +37,13 @@ app = FastAPI(title="YT Channel Downloader", lifespan=lifespan)
 class AddChannelRequest(BaseModel):
     url: str
     download_path: str | None = None
+    date_filter: str | None = None
 
 
 class UpdateChannelRequest(BaseModel):
     download_path: str | None = None
     enabled: bool | None = None
+    date_filter: str | None = None
 
 
 # ── API Routes ──────────────────────────────────────────
@@ -99,9 +101,10 @@ async def add_channel(req: AddChannelRequest):
         if await cursor.fetchone():
             raise HTTPException(status_code=409, detail="Channel already added.")
 
+        date_filter = req.date_filter or ""
         cursor = await db.execute(
-            "INSERT INTO channels (name, url, download_path) VALUES (?, ?, ?)",
-            (info["name"], info["url"], download_path),
+            "INSERT INTO channels (name, url, download_path, date_filter) VALUES (?, ?, ?, ?)",
+            (info["name"], info["url"], download_path, date_filter),
         )
         await db.commit()
         channel_id = cursor.lastrowid
@@ -111,7 +114,7 @@ async def add_channel(req: AddChannelRequest):
     # Kick off initial download in background
     asyncio.create_task(process_channel(channel_id))
 
-    return {"id": channel_id, "name": info["name"], "url": info["url"], "download_path": download_path}
+    return {"id": channel_id, "name": info["name"], "url": info["url"], "download_path": download_path, "date_filter": date_filter}
 
 
 @app.patch("/api/channels/{channel_id}")
@@ -126,6 +129,8 @@ async def update_channel(channel_id: int, req: UpdateChannelRequest):
             await db.execute("UPDATE channels SET download_path = ? WHERE id = ?", (req.download_path, channel_id))
         if req.enabled is not None:
             await db.execute("UPDATE channels SET enabled = ? WHERE id = ?", (int(req.enabled), channel_id))
+        if req.date_filter is not None:
+            await db.execute("UPDATE channels SET date_filter = ? WHERE id = ?", (req.date_filter, channel_id))
         await db.commit()
         return {"ok": True}
     finally:
