@@ -18,4 +18,8 @@ services:
     environment:
       - DOWNLOAD_DIR=/downloads
       - CHECK_INTERVAL_MINUTES=30      # How often to check for new videos
+      # ── Notifications (optional) ──
+      # - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+      # - TELEGRAM_BOT_TOKEN=your-bot-token
+      # - TELEGRAM_CHAT_ID=your-chat-id
     restart: unless-stopped

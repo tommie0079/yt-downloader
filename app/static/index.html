@@ -20,6 +20,20 @@
     --radius: 8px;
   }
 
+  [data-theme="light"] {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface2: #e8e8e8;
+    --border: #ddd;
+    --text: #1a1a1a;
+    --text-dim: #666;
+    --accent: #e53935;
+    --accent-hover: #f44336;
+    --green: #388e3c;
+    --yellow: #f57c00;
+    --blue: #1976d2;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -513,6 +527,72 @@
   .tooltip ol li { margin-bottom: 4px; }
   .tooltip a { color: var(--blue); text-decoration: none; }
   .tooltip a:hover { text-decoration: underline; }
+
+  /* ── Theme Toggle ─── */
+  .theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 16px;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+  }
+  .theme-toggle:hover { background: var(--surface2); }
+
+  /* ── Progress Bar ─── */
+  .progress-bar-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .progress-bar-container.active { display: block; }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .progress-info .channel { font-weight: 600; }
+  .progress-info .video { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+
+  .progress-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .ws-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .ws-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  [data-theme="light"] .channel-meta-item input[type="date"] { color-scheme: light; }
 </style>
 </head>
 <body>
@@ -520,6 +600,8 @@
   <header>
     <h1><span class="icon">&#9655;</span> YT Channel Downloader</h1>
     <div class="header-actions">
+      <span class="ws-status" id="wsStatus"><span class="ws-dot" style="background:var(--text-dim)"></span> connecting</span>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeBtn">&#9790;</button>
       <button class="btn btn-secondary" onclick="scanAll()">&#8635; Scan All</button>
       <button class="btn btn-primary" onclick="toggleForm()">+ Add Channel</button>
     </div>
@@ -549,13 +631,24 @@
     </div>
   </div>
 
+  <!-- Download Progress -->
+  <div class="progress-bar-container" id="progressBar">
+    <div class="progress-info">
+      <span class="channel" id="progressChannel"></span>
+      <span class="video" id="progressVideo"></span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
   <!-- Add Channel Form -->
   <div class="add-form" id="addForm">
     <h2>Add YouTube Channel</h2>
     <div class="form-row">
       <div class="form-group">
         <label>Channel URL or Handle</label>
-        <input type="text" id="channelUrl" placeholder="https://www.youtube.com/@ChannelName">
+        <input type="text" id="channelUrl" placeholder="https://www.youtube.com/@ChannelName or playlist URL">
       </div>
     </div>
     <div class="form-row">
@@ -600,6 +693,89 @@ const API = '';
 let channels = [];
 let openVideos = {};  // channelId -> true
 let videoFilters = {}; // channelId -> filter
+
+// ── Theme Toggle ──
+function getTheme() {
+  return localStorage.getItem('yt-dl-theme') || 'dark';
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('themeBtn');
+  btn.innerHTML = theme === 'dark' ? '&#9790;' : '&#9728;';
+  localStorage.setItem('yt-dl-theme', theme);
+}
+function toggleTheme() {
+  applyTheme(getTheme() === 'dark' ? 'light' : 'dark');
+}
+applyTheme(getTheme());
+
+// ── WebSocket Progress ──
+let ws = null;
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/progress`);
+
+  ws.onopen = () => {
+    const el = document.getElementById('wsStatus');
+    el.innerHTML = '<span class="ws-dot" style="background:var(--green)"></span> live';
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      handleProgress(data);
+    } catch (e) {}
+  };
+
+  ws.onclose = () => {
+    const el = document.getElementById('wsStatus');
+    el.innerHTML = '<span class="ws-dot" style="background:var(--text-dim)"></span> offline';
+    // Reconnect after 3 seconds
+    setTimeout(connectWebSocket, 3000);
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+function handleProgress(data) {
+  const bar = document.getElementById('progressBar');
+  const channel = document.getElementById('progressChannel');
+  const video = document.getElementById('progressVideo');
+  const fill = document.getElementById('progressFill');
+
+  if (data.type === 'scan_start') {
+    bar.classList.add('active');
+    channel.textContent = `Scanning: ${data.channel_name}`;
+    video.textContent = 'Discovering videos...';
+    fill.style.width = '0%';
+  } else if (data.type === 'download_start') {
+    bar.classList.add('active');
+    channel.textContent = data.channel_name;
+    video.textContent = `Downloading: ${data.video_title}`;
+    const pct = data.total > 0 ? Math.round((data.progress / data.total) * 100) : 0;
+    fill.style.width = pct + '%';
+  } else if (data.type === 'download_complete') {
+    const pct = data.total > 0 ? Math.round((data.progress / data.total) * 100) : 0;
+    fill.style.width = pct + '%';
+    video.textContent = `✓ ${data.video_title}`;
+    fetchChannels(); // Refresh stats
+  } else if (data.type === 'download_failed') {
+    const pct = data.total > 0 ? Math.round((data.progress / data.total) * 100) : 0;
+    fill.style.width = pct + '%';
+    video.textContent = `✗ ${data.video_title}`;
+  } else if (data.type === 'scan_complete') {
+    fill.style.width = '100%';
+    video.textContent = 'Done!';
+    setTimeout(() => {
+      bar.classList.remove('active');
+    }, 3000);
+    fetchChannels(); // Final refresh
+  }
+}
+
+connectWebSocket();
 
 // ── Cookie Management ──
 async function checkCookieStatus() {

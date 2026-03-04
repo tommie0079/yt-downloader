@@ -25,4 +25,7 @@ ENV CHECK_INTERVAL_MINUTES=30
 
 EXPOSE 7842
 
+HEALTHCHECK --interval=60s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7842/api/health')" || exit 1
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7842"]

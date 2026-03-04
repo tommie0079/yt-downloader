@@ -1,16 +1,17 @@
 import os
 import logging
 import asyncio
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.database import init_db, get_db
-from app.downloader import fetch_channel_info, process_channel, COOKIES_FILE
+from app.downloader import fetch_channel_info, process_channel, COOKIES_FILE, register_ws, unregister_ws
 from app.scheduler import start_scheduler, stop_scheduler, check_all_channels
 
 logging.basicConfig(
@@ -20,6 +21,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DEFAULT_DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", "/downloads")
+APP_VERSION = "1.0.0"
+_start_time = time.time()
 
 
 @asynccontextmanager
@@ -201,6 +204,63 @@ async def get_settings():
         "default_download_dir": DEFAULT_DOWNLOAD_DIR,
         "check_interval_minutes": int(os.environ.get("CHECK_INTERVAL_MINUTES", "30")),
     }
+
+
+# ── Health Check ───────────────────────────────────────
+
+def _format_uptime(seconds: float) -> str:
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    minutes = int((seconds % 3600) // 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    parts.append(f"{minutes}m")
+    return " ".join(parts)
+
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint for monitoring."""
+    uptime = time.time() - _start_time
+    db = await get_db()
+    try:
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM channels")
+        channels_count = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM videos")
+        total_videos = (await cursor.fetchone())["cnt"]
+        cursor = await db.execute("SELECT COUNT(*) as cnt FROM videos WHERE status = 'downloaded'")
+        downloaded_videos = (await cursor.fetchone())["cnt"]
+    finally:
+        await db.close()
+
+    return {
+        "status": "healthy",
+        "uptime": _format_uptime(uptime),
+        "version": APP_VERSION,
+        "channels": channels_count,
+        "total_videos": total_videos,
+        "downloaded_videos": downloaded_videos,
+    }
+
+
+# ── WebSocket Progress ─────────────────────────────────
+
+@app.websocket("/ws/progress")
+async def websocket_progress(ws: WebSocket):
+    """WebSocket endpoint for live download progress updates."""
+    await ws.accept()
+    register_ws(ws)
+    try:
+        while True:
+            # Keep connection alive, wait for client messages (ping/pong)
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        unregister_ws(ws)
 
 
 # ── Cookie Management ──────────────────────────────────
