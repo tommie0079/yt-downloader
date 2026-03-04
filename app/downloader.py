@@ -68,9 +68,9 @@ def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
         "retries": 5,
         "fragment_retries": 5,
         "concurrent_fragment_downloads": 4,
-        "sleep_interval": 5,
-        "max_sleep_interval": 30,
-        "sleep_interval_requests": 1,
+        "sleep_interval": 10,
+        "max_sleep_interval": 60,
+        "sleep_interval_requests": 3,
         "remote_components": ["ejs:github"],
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
@@ -317,7 +317,7 @@ async def process_channel(channel_id: int):
             await db.commit()
 
             # Sleep between downloads to avoid YouTube rate limiting
-            await asyncio.sleep(10)
+            await asyncio.sleep(30)
 
         logger.info(f"Finished processing channel: {channel_name}")
         await _broadcast_progress({
