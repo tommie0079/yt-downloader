@@ -111,17 +111,11 @@ If you see the error **"Sign in to confirm you're not a bot"**, you need to prov
    - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
 2. Log in to YouTube in your browser.
 3. Use the extension to export cookies for `youtube.com` — save the file as `cookies.txt`.
-4. Place `cookies.txt` in your **data directory**:
-   - **Synology:** `/volume1/docker/yt-downloader/data/cookies.txt`
-   - **Windows:** `./data/cookies.txt`
-5. Restart the container:
-   ```bash
-   docker-compose restart
-   ```
+4. Upload the file via the **web UI** — click the **"Upload cookies.txt"** button at the top of the page.
 
 The app will automatically detect and use the cookies file. If the file is missing, it runs without cookies.
 
-> **Note:** YouTube cookies expire periodically. If downloads start failing again, re-export fresh cookies.
+> **Note:** YouTube cookies expire periodically. If downloads start failing again, re-export and re-upload fresh cookies via the web UI.
 
 ## Date Range Filter
 
