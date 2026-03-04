@@ -39,7 +39,6 @@ def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
         "retries": 5,
         "fragment_retries": 5,
         "concurrent_fragment_downloads": 4,
-        "extractor_args": {"youtube": {"js_runtimes": ["node"]}},
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 

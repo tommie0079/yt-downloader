@@ -1,8 +1,11 @@
 FROM python:3.12-slim
 
-# Install ffmpeg + nodejs (needed by yt-dlp for JS-based YouTube extraction)
+# Install ffmpeg + deno (needed by yt-dlp for JS-based YouTube extraction)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg nodejs && \
+    apt-get install -y --no-install-recommends ffmpeg curl unzip && \
+    curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh && \
+    apt-get purge -y curl unzip && \
+    apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
