@@ -39,6 +39,7 @@ def _get_yt_dlp_opts(download_path: str, archive_file: str) -> dict:
         "retries": 5,
         "fragment_retries": 5,
         "concurrent_fragment_downloads": 4,
+        "remote_components": ["ejs:github"],
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
@@ -50,6 +51,7 @@ async def fetch_channel_info(url: str) -> dict | None:
         "no_warnings": True,
         "extract_flat": True,
         "playlist_items": "0",
+        "remote_components": ["ejs:github"],
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
@@ -107,6 +109,7 @@ async def fetch_channel_videos(url: str, date_filter: str = "") -> list[dict]:
         "no_warnings": True,
         "extract_flat": "in_playlist",
         "ignoreerrors": True,
+        "remote_components": ["ejs:github"],
         **({"cookiefile": COOKIES_FILE} if os.path.isfile(COOKIES_FILE) else {}),
     }
 
