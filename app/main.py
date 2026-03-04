@@ -5,9 +5,8 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.database import init_db, get_db
