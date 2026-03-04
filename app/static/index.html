@@ -404,6 +404,58 @@
     .channel-stats { gap: 10px; }
     .header-actions { flex-direction: column; }
   }
+
+  /* ── Cookie Management ─── */
+  .cookie-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cookie-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .cookie-status .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .cookie-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .cookie-actions input[type="file"] {
+    display: none;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: none;
+  }
+  .drop-zone.active { display: block; margin-bottom: 16px; }
+  .drop-zone.dragover { border-color: var(--accent); color: var(--text); background: rgba(255,68,68,0.05); }
 </style>
 </head>
 <body>
@@ -415,6 +467,18 @@
       <button class="btn btn-primary" onclick="toggleForm()">+ Add Channel</button>
     </div>
   </header>
+
+  <!-- Cookie Management -->
+  <div class="cookie-bar" id="cookieBar">
+    <div class="cookie-status" id="cookieStatus">
+      <span class="dot gray"></span> Checking cookies...
+    </div>
+    <div class="cookie-actions">
+      <input type="file" id="cookieFileInput" accept=".txt" onchange="uploadCookieFile(this.files[0])">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cookieFileInput').click()">&#128273; Upload cookies.txt</button>
+      <button class="btn btn-secondary btn-sm" id="deleteCookieBtn" style="display:none" onclick="deleteCookies()">&#10005;</button>
+    </div>
+  </div>
 
   <!-- Add Channel Form -->
   <div class="add-form" id="addForm">
@@ -467,6 +531,58 @@ const API = '';
 let channels = [];
 let openVideos = {};  // channelId -> true
 let videoFilters = {}; // channelId -> filter
+
+// ── Cookie Management ──
+async function checkCookieStatus() {
+  try {
+    const res = await fetch(`${API}/api/cookies/status`);
+    const data = await res.json();
+    const el = document.getElementById('cookieStatus');
+    const delBtn = document.getElementById('deleteCookieBtn');
+    if (data.exists) {
+      const modified = new Date(data.modified * 1000).toLocaleString();
+      el.innerHTML = `<span class="dot green"></span> Cookies loaded <span style="color:var(--text-dim);font-size:11px">(updated ${modified})</span>`;
+      delBtn.style.display = '';
+    } else {
+      el.innerHTML = '<span class="dot red"></span> No cookies — YouTube may block downloads. Upload a cookies.txt file.';
+      delBtn.style.display = 'none';
+    }
+  } catch (e) {
+    document.getElementById('cookieStatus').innerHTML = '<span class="dot gray"></span> Could not check cookie status';
+  }
+}
+
+async function uploadCookieFile(file) {
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${API}/api/cookies/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Upload failed');
+    }
+    toast('Cookies uploaded successfully!');
+    checkCookieStatus();
+  } catch (e) {
+    toast(e.message, true);
+  }
+  document.getElementById('cookieFileInput').value = '';
+}
+
+async function deleteCookies() {
+  if (!confirm('Remove cookies file? YouTube may block downloads without it.')) return;
+  try {
+    await fetch(`${API}/api/cookies`, { method: 'DELETE' });
+    toast('Cookies removed');
+    checkCookieStatus();
+  } catch (e) {
+    toast('Failed to remove cookies', true);
+  }
+}
 
 // ── Toast ──
 function toast(msg, isError = false) {
@@ -735,6 +851,7 @@ function esc(s) {
 
 // ── Init ──
 fetchChannels();
+checkCookieStatus();
 // Auto-refresh every 10 seconds
 setInterval(fetchChannels, 10000);
 </script>

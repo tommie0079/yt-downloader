@@ -2,14 +2,15 @@ import os
 import logging
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.database import init_db, get_db
-from app.downloader import fetch_channel_info, process_channel
+from app.downloader import fetch_channel_info, process_channel, COOKIES_FILE
 from app.scheduler import start_scheduler, stop_scheduler, check_all_channels
 
 logging.basicConfig(
@@ -200,6 +201,61 @@ async def get_settings():
         "default_download_dir": DEFAULT_DOWNLOAD_DIR,
         "check_interval_minutes": int(os.environ.get("CHECK_INTERVAL_MINUTES", "30")),
     }
+
+
+# ── Cookie Management ──────────────────────────────────
+
+@app.get("/api/cookies/status")
+async def cookies_status():
+    """Check if a cookies file exists and return basic info."""
+    cookie_path = Path(COOKIES_FILE)
+    if cookie_path.is_file():
+        stat = cookie_path.stat()
+        return {
+            "exists": True,
+            "size": stat.st_size,
+            "modified": stat.st_mtime,
+        }
+    return {"exists": False}
+
+
+@app.post("/api/cookies/upload")
+async def upload_cookies(file: UploadFile = File(...)):
+    """Upload a Netscape-format cookies.txt file."""
+    content = await file.read()
+    text = content.decode("utf-8", errors="replace")
+
+    # Basic validation: check it looks like a Netscape cookie file
+    lines = text.strip().splitlines()
+    if not lines:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    # Check for Netscape header or tab-separated cookie lines
+    has_header = any("Netscape" in line or "HTTP Cookie" in line for line in lines[:3])
+    has_cookies = any(line.strip() and not line.startswith("#") and "\t" in line for line in lines)
+
+    if not has_cookies:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid format. Please export cookies in Netscape/cookies.txt format."
+        )
+
+    # Write the file
+    cookie_path = Path(COOKIES_FILE)
+    cookie_path.parent.mkdir(parents=True, exist_ok=True)
+    cookie_path.write_text(text, encoding="utf-8")
+
+    return {"ok": True, "message": "Cookies uploaded successfully", "size": len(content)}
+
+
+@app.delete("/api/cookies")
+async def delete_cookies():
+    """Remove the cookies file."""
+    cookie_path = Path(COOKIES_FILE)
+    if cookie_path.is_file():
+        cookie_path.unlink()
+        return {"ok": True, "message": "Cookies deleted"}
+    raise HTTPException(status_code=404, detail="No cookies file found")
 
 
 # ── Serve Frontend ─────────────────────────────────────
