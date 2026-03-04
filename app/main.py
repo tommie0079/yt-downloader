@@ -223,15 +223,14 @@ async def cookies_status():
 async def upload_cookies(file: UploadFile = File(...)):
     """Upload a Netscape-format cookies.txt file."""
     content = await file.read()
-    text = content.decode("utf-8", errors="replace")
 
     # Basic validation: check it looks like a Netscape cookie file
+    text = content.decode("utf-8", errors="replace")
     lines = text.strip().splitlines()
     if not lines:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # Check for Netscape header or tab-separated cookie lines
-    has_header = any("Netscape" in line or "HTTP Cookie" in line for line in lines[:3])
+    # Check for tab-separated cookie lines
     has_cookies = any(line.strip() and not line.startswith("#") and "\t" in line for line in lines)
 
     if not has_cookies:
@@ -240,10 +239,10 @@ async def upload_cookies(file: UploadFile = File(...)):
             detail="Invalid format. Please export cookies in Netscape/cookies.txt format."
         )
 
-    # Write the file
+    # Write the raw bytes to preserve tabs and encoding exactly
     cookie_path = Path(COOKIES_FILE)
     cookie_path.parent.mkdir(parents=True, exist_ok=True)
-    cookie_path.write_text(text, encoding="utf-8")
+    cookie_path.write_bytes(content)
 
     return {"ok": True, "message": "Cookies uploaded successfully", "size": len(content)}
 
