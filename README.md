@@ -94,9 +94,36 @@ Log out and back in for the group change to take effect.
 
 ### Option 1: Docker Hub (recommended)
 
+No need to clone the repo — just run:
+
 ```bash
-docker pull tomznl/yt-downloader:latest
-docker run -d -p 7842:7842 -v ./data:/app/data -v ./downloads:/downloads tomznl/yt-downloader:latest
+docker run -d \
+  --name yt-downloader \
+  -p 7842:7842 \
+  -v ./data:/app/data \
+  -v ./downloads:/downloads \
+  tomznl/yt-downloader:latest
+```
+
+Or use Docker Compose — create a `docker-compose.yml`:
+
+```yaml
+services:
+  yt-downloader:
+    image: tomznl/yt-downloader:latest
+    container_name: yt-downloader
+    ports:
+      - "7842:7842"
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/downloads
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker-compose up -d
 ```
 
 ### Option 2: Build from source
