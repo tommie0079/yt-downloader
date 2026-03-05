@@ -5,7 +5,7 @@
 **Automatically download all videos from YouTube channels — with a clean web UI and Docker support.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ready-blue?logo=docker)](Dockerfile)
+[![Docker Hub](https://img.shields.io/docker/pulls/tomznl/yt-downloader?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/tomznl/yt-downloader)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white)](requirements.txt)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-latest-red?logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com)
@@ -92,7 +92,18 @@ Log out and back in for the group change to take effect.
 
 ## Quick Start
 
+### Option 1: Docker Hub (recommended)
+
 ```bash
+docker pull tomznl/yt-downloader:latest
+docker run -d -p 7842:7842 -v ./data:/app/data -v ./downloads:/downloads tomznl/yt-downloader:latest
+```
+
+### Option 2: Build from source
+
+```bash
+git clone https://github.com/tommie0079/yt-downloader.git
+cd yt-downloader
 docker-compose up -d --build
 ```
 
