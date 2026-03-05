@@ -53,5 +53,9 @@ async def init_db():
         # Reset any stuck 'downloading' videos from a previous crash/restart
         await db.execute("UPDATE videos SET status = 'pending' WHERE status = 'downloading'")
         await db.commit()
+
+        # Clean up orphaned videos (channel was deleted but videos remained)
+        await db.execute("DELETE FROM videos WHERE channel_id NOT IN (SELECT id FROM channels)")
+        await db.commit()
     finally:
         await db.close()
